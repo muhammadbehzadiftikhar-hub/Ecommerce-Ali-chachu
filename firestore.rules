@@ -1,0 +1,248 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE HELPER FUNCTIONS ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      // Allow Google OAuth or verified email
+      return isSignedIn() && (
+        request.auth.token.email_verified == true || 
+        request.auth.token.firebase.sign_in_provider == 'google.com'
+      );
+    }
+
+    // Admin validation - matches developer email, seed admin, or explicit database collections
+    function isAdmin() {
+      return isSignedIn() && (
+        ('email' in request.auth.token && request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com') ||
+        ('email' in request.auth.token && request.auth.token.email == 'admin@example.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN')
+      );
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isUnseeded() {
+      return !exists(/databases/$(database)/documents/settings/general) ||
+             !exists(/databases/$(database)/documents/products/prod-iphone15) ||
+             !exists(/databases/$(database)/documents/categories/cat-electronics);
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper functions for Resource inspection
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY MATCH BLOCKS ---
+
+    // 1. Users Collections
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Creating a user profile
+      allow create: if (isOwner(userId) && 
+        isValidId(userId) &&
+        incoming().id == userId &&
+        (
+          incoming().role == 'CUSTOMER' ||
+          (incoming().role == 'ADMIN' && (
+            incoming().email == 'muhammadbehzadiftikhar@gmail.com' ||
+            incoming().email == 'admin@example.com' ||
+            request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com' ||
+            request.auth.token.email == 'admin@example.com'
+          ))
+        )) || isUnseeded();
+
+      // Only allow updating profile, unless raising to Admin which verifies the whitelist
+      allow update: if (isOwner(userId) && (
+        (incoming().role == existing().role) ||
+        (incoming().role == 'ADMIN' && (
+          incoming().email == 'muhammadbehzadiftikhar@gmail.com' ||
+          incoming().email == 'admin@example.com' ||
+          request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com' ||
+          request.auth.token.email == 'admin@example.com'
+        ))
+      )) || isAdmin();
+
+      allow delete: if isAdmin();
+
+      // Subcollection: Addresses
+      match /addresses/{addressId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidId(addressId) &&
+          incoming().id == addressId &&
+          incoming().userId == userId &&
+          incoming().fullName is string && incoming().fullName.size() <= 100 &&
+          incoming().street is string && incoming().street.size() <= 200 &&
+          incoming().city is string && incoming().city.size() <= 100 &&
+          incoming().state is string && incoming().state.size() <= 100 &&
+          incoming().zipCode is string && incoming().zipCode.size() <= 20 &&
+          incoming().country is string && incoming().country.size() <= 100 &&
+          incoming().isDefault is bool;
+
+        allow update: if isOwner(userId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'street', 'city', 'state', 'zipCode', 'country', 'isDefault']);
+
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // 2. Categories Collection
+    match /categories/{categoryId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin() || isUnseeded();
+    }
+
+    // 3. Products Collection
+    match /products/{productId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin() || isUnseeded();
+      allow update: if (
+        isSignedIn() &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['wishlist'])
+      ) || isAdmin() || isUnseeded();
+
+      // Subcollection: Reviews (unbounded reviews storage under each product)
+      match /reviews/{reviewId} {
+        allow read: if true; // Publicly readable reviews
+        
+        allow create: if isSignedIn() && isValidId(reviewId) &&
+          incoming().id == reviewId &&
+          incoming().productId == productId &&
+          incoming().userId == request.auth.uid &&
+          incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5 &&
+          (incoming().comment == null || (incoming().comment is string && incoming().comment.size() <= 2000)) &&
+          incoming().verified is bool &&
+          incoming().createdAt == request.time;
+
+        allow update: if isOwner(existing().userId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment']) &&
+          incoming().rating is int && incoming().rating >= 1 && incoming().rating <= 5 &&
+          (incoming().comment == null || (incoming().comment is string && incoming().comment.size() <= 2000));
+
+        allow delete: if isOwner(existing().userId) || isAdmin();
+      }
+    }
+
+    // 4. Orders Collection
+    match /orders/{orderId} {
+      // Direct high-entropy get is permitted for guest/customer tracking, querying collection is restricted
+      allow get: if true;
+      allow list: if isAdmin() || (
+        isSignedIn() && (
+          (resource.data.userId != null && resource.data.userId == request.auth.uid) ||
+          (resource.data.email != null && resource.data.email == request.auth.token.email)
+        )
+      );
+
+      // Support Guest order creation
+      allow create: if isValidId(orderId) &&
+        incoming().id == orderId &&
+        incoming().email is string && incoming().email.size() <= 250 &&
+        incoming().items is list && incoming().items.size() > 0 &&
+        (incoming().status == 'PENDING' || incoming().status == 'CONFIRMED') &&
+        (incoming().paymentStatus == 'PENDING' || incoming().paymentStatus == 'PAID');
+
+      // Updating orders: Customers can self-cancel while processing. Admin can edit anything.
+      allow update: if (
+        isSignedIn() && (
+          (existing().userId != null && existing().userId == request.auth.uid) ||
+          (existing().email != null && existing().email == request.auth.token.email)
+        ) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+        incoming().status == 'CANCELLED' &&
+        (existing().status == 'PENDING' || existing().status == 'CONFIRMED') &&
+        incoming().updatedAt == request.time
+      ) || isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // 5. Site Settings and Configurations
+    match /settings/{settingId} {
+      allow read: if true; // Publicly readable configurations
+      allow write: if isAdmin() || isUnseeded();
+    }
+
+    // 6. Direct Admin user reference list
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isUnseeded();
+    }
+
+    // 7. Newsletter Subscribers Collection
+    match /subscribers/{subscriberId} {
+      allow read: if isAdmin();
+      allow create: if isValidId(subscriberId) &&
+        incoming().id == subscriberId &&
+        incoming().email is string && incoming().email.size() <= 200 &&
+        incoming().createdAt == request.time;
+    }
+
+    // 8. Site Feedback Collection
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isValidId(feedbackId) &&
+        incoming().type is string &&
+        incoming().email is string &&
+        incoming().message is string && incoming().message.size() <= 5000 &&
+        incoming().createdAt is string;
+    }
+
+    // 9. Connection Validation Collection
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // 10. Customer Carts Collection
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // 11. Customer Compare List Collection
+    match /compares/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // 12. Password Recovery Collection
+    match /password_recovery/{email} {
+      allow get: if true;
+      allow create: if (
+        isValidId(incoming().userId) &&
+        incoming().email == email &&
+        incoming().securityQuestion is string && incoming().securityQuestion.size() <= 200 &&
+        incoming().securityAnswer is string && incoming().securityAnswer.size() <= 200 &&
+        incoming().password is string && incoming().password.size() <= 100
+      );
+      allow update: if (
+        incoming().securityAnswer == existing().securityAnswer &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['password', 'updatedAt']) &&
+        incoming().password is string && incoming().password.size() <= 100 &&
+        incoming().updatedAt == request.time
+      ) || isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

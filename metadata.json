@@ -1,0 +1,6 @@
+{
+  "name": "MyStore Premium",
+  "description": "A modular, production-ready premium storefront with robust product navigation, interactive cart, and a responsive admin experience.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

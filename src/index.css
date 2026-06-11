@@ -1,0 +1,113 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+@import "tailwindcss";
+
+/* Premium dark theme variables and rules linked to active HTML .dark class */
+.dark body {
+  background-color: #020617 !important; /* slate-950 */
+  color: #f8fafc !important; /* slate-50 */
+}
+
+.dark #mystore-premium-app {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
+.dark #app-header {
+  background-color: rgba(2, 6, 23, 0.8) !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark header button, .dark header span, .dark header svg {
+  color: #f8fafc !important;
+}
+
+.dark #header-search-input {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark #header-search-input::placeholder {
+  color: #64748b !important;
+}
+
+.dark main {
+  color: #f8fafc !important;
+}
+
+/* Card components dark mode adaptation */
+.dark .bg-white {
+  background-color: #0f172a !important; /* slate-900 */
+  color: #f8fafc !important;
+}
+
+.dark .border-slate-100, .dark .border-slate-200 {
+  border-color: #1e293b !important;
+}
+
+.dark .text-slate-900, .dark .text-slate-850, .dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-705, .dark .text-slate-700, .dark .text-slate-650 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500, .dark .text-slate-450, .dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .bg-slate-50\/50 {
+  background-color: rgba(9, 13, 22, 0.4) !important;
+}
+
+.dark input, .dark textarea, .dark select {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark #profile-menu-dropdown {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark #profile-menu-dropdown button {
+  color: #cbd5e1 !important;
+}
+
+.dark #profile-menu-dropdown button:hover {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-[#f8fafc] {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-[url] {
+  filter: brightness(0.8);
+}

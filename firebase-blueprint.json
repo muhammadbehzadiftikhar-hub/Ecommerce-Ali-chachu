@@ -1,0 +1,236 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information, including roles and contact info.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["CUSTOMER", "ADMIN", "SUPER_ADMIN"] },
+        "phone": { "type": "string" },
+        "avatar": { "type": "string" },
+        "password": { "type": "string" },
+        "securityQuestion": { "type": "string" },
+        "securityAnswer": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "Address": {
+      "title": "Shipping Address",
+      "description": "User shipping and billing addresses.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "street": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "zipCode": { "type": "string" },
+        "country": { "type": "string" },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "fullName", "street", "city", "state", "zipCode", "country"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Store product listings with multi-image gallery, prices, inventory, and variants.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "price": { "type": "number" },
+        "compareAtPrice": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "sku": { "type": "string" },
+        "trackInventory": { "type": "boolean" },
+        "quantity": { "type": "integer" },
+        "lowStockAlert": { "type": "integer" },
+        "categoryId": { "type": "string" },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["ACTIVE", "DRAFT", "ARCHIVED"] },
+        "images": { "type": "array" },
+        "variants": { "type": "array" },
+        "tags": { "type": "array" },
+        "metaTitle": { "type": "string" },
+        "metaDescription": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "slug", "price", "status"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Collections of products.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "parentId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "slug"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer purchase transaction history.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "shippingCost": { "type": "number" },
+        "discount": { "type": "number" },
+        "total": { "type": "number" },
+        "shippingAddress": { "type": "object" },
+        "billingAddress": { "type": "object" },
+        "status": { "type": "string", "enum": ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"] },
+        "paymentStatus": { "type": "string", "enum": ["PENDING", "PAID", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"] },
+        "stripePaymentIntentId": { "type": "string" },
+        "stripeCheckoutSessionId": { "type": "string" },
+        "shippingMethod": { "type": "string" },
+        "trackingNumber": { "type": "string" },
+        "notes": { "type": "string" },
+        "couponCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orderNumber", "email", "items", "subtotal", "total", "status", "paymentStatus"]
+    },
+    "Review": {
+      "title": "Product Review",
+      "description": "Customer ratings and comments for a specific product.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "productId": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "rating", "userId", "productId", "createdAt"]
+    },
+    "Setting": {
+      "title": "Site Setting",
+      "description": "Dynamic store configuration values.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "key": { "type": "string" },
+        "value": { "type": "object" }
+      },
+      "required": ["id", "key", "value"]
+    },
+    "Subscriber": {
+      "title": "Newsletter Subscriber",
+      "description": "User email subscribed to newsletter.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "createdAt"]
+    },
+    "Cart": {
+      "title": "User Cart",
+      "description": "User shopping cart containing temporary selected items across devices.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["items"]
+    },
+    "Compare": {
+      "title": "User Compare List",
+      "description": "User product comparison list.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "selectedIds": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["selectedIds"]
+    },
+    "PasswordRecovery": {
+      "title": "Password Recovery Mapping",
+      "description": "Enables database-based password verification and in-app password recovery question logic.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "userId": { "type": "string" },
+        "securityQuestion": { "type": "string" },
+        "securityAnswer": { "type": "string" },
+        "password": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "userId", "securityQuestion", "securityAnswer", "password"]
+    }
+  },
+  "firestore": {
+    "/password_recovery/{email}": {
+      "schema": { "$ref": "#/entities/PasswordRecovery" },
+      "description": "Store database-based security answers and passwords secured by answer queries."
+    },
+    "/compares/{userId}": {
+      "schema": { "$ref": "#/entities/Compare" },
+      "description": "Customer product comparison lists."
+    },
+    "/carts/{userId}": {
+      "schema": { "$ref": "#/entities/Cart" },
+      "description": "Customer shopping cart states synchronized across physical client nodes."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User accounts and roles."
+    },
+    "/users/{userId}/addresses/{addressId}": {
+      "schema": { "$ref": "#/entities/Address" },
+      "description": "Customer addresses."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Products list."
+    },
+    "/products/{productId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Product ratings and reviews."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Product categories."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders."
+    },
+    "/subscribers/{subscriberId}": {
+      "schema": { "$ref": "#/entities/Subscriber" },
+      "description": "Newsletter subscribers list."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Setting" },
+      "description": "Dynamic configuration parameters."
+    }
+  }
+}
