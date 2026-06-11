@@ -1,0 +1,20 @@
+# Netlify Configuration File
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # The directory containing the build command and dependencies
+  base = ""
+  
+  # The command executed to compile the production-ready React client bundle
+  command = "npm run build"
+  
+  # The output directory after compiling high-performance static files
+  publish = "dist"
+
+# Configure standard Single Page Application (SPA) redirects.
+# This ensures that deep-links and client-side routes return index.html
+# instead of an unexpected 404 error during hard browser reloads.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
