@@ -78,7 +78,7 @@ export function ProductGrid({
   return (
     <div id="catalog-section" className="space-y-8">
       {/* Category selection and filter control widget */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-slate-100 pb-6">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
         
         {/* Horizontal Category selectors */}
         <div id="category-scroller" className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -87,8 +87,8 @@ export function ProductGrid({
             onClick={() => onSelectCategory(null)}
             className={`px-4 py-2.5 rounded-xl text-xs font-sans font-semibold tracking-wide uppercase transition-all whitespace-nowrap cursor-pointer ${
               selectedCategory === null
-                ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
-                : 'text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white dark:bg-indigo-600 dark:text-white shadow-md shadow-slate-900/10 dark:shadow-indigo-600/10'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             All Products
@@ -96,13 +96,13 @@ export function ProductGrid({
           
           {categories.map((cat) => (
             <button
-              id={`cat-${cat.id}-btn`}
+               id={`cat-${cat.id}-btn`}
               key={cat.id}
               onClick={() => onSelectCategory(cat.id)}
               className={`px-4 py-2.5 rounded-xl text-xs font-sans font-semibold tracking-wide uppercase transition-all whitespace-nowrap cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
-                  : 'text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100'
+                  ? 'bg-slate-900 text-white dark:bg-indigo-600 dark:text-white shadow-md shadow-slate-900/10 dark:shadow-indigo-600/10'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               {cat.name}
@@ -114,8 +114,8 @@ export function ProductGrid({
         <div className="flex items-center gap-4 flex-wrap">
           
           {/* Price Ceiling Filter Slider */}
-          <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl text-xs">
-            <span className="text-slate-500 font-medium">Max Price:</span>
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 px-4 py-2 rounded-xl text-xs">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Max Price:</span>
             <input
               id="price-range-slider"
               type="range"
@@ -124,9 +124,9 @@ export function ProductGrid({
               step="10"
               value={priceLimit}
               onChange={(e) => setPriceLimit(Number(e.target.value))}
-              className="w-24 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
+              className="w-24 h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-indigo-550 dark:accent-indigo-500"
             />
-            <span className="font-bold text-slate-800 font-mono">${priceLimit}</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">${priceLimit}</span>
           </div>
 
           {/* Sorter Selector */}
@@ -136,7 +136,7 @@ export function ProductGrid({
               id="sort-select-dropdown"
               value={selectedSort}
               onChange={(e: any) => setSelectedSort(e.target.value)}
-              className="bg-slate-50 border-0 rounded-xl px-4 py-2.5 font-sans font-medium text-slate-700 focus:ring-1 focus:ring-slate-400 outline-none cursor-pointer"
+              className="bg-slate-50 dark:bg-slate-900 border-0 rounded-xl px-4 py-2.5 font-sans font-medium text-slate-700 dark:text-slate-200 focus:ring-1 focus:ring-slate-400 dark:focus:ring-indigo-600 outline-none cursor-pointer"
             >
               <option value="featured">Featured / Curated</option>
               <option value="price-asc">Price: Low to High</option>

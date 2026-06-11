@@ -156,7 +156,7 @@ export function ProductCard({ product, user, onViewDetails, onQuickAdd, onToggle
       <div className="p-5 flex-1 flex flex-col justify-between">
         <div>
           {/* Tags or Category label */}
-          <div className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+          <div className="text-[10px] font-sans font-bold text-slate-400 dark:text-indigo-400 uppercase tracking-widest mb-1.5">
             {product.categoryId === 'cat-electronics' ? 'Electronics' :
              product.categoryId === 'cat-clothing' ? 'Clothing' :
              product.categoryId === 'cat-accessories' ? 'Accessories' : 'Living & Home'}
@@ -164,23 +164,23 @@ export function ProductCard({ product, user, onViewDetails, onQuickAdd, onToggle
 
           <h3 
             onClick={() => onViewDetails(product)}
-            className="font-sans font-semibold text-slate-800 text-sm tracking-tight mb-2 hover:text-slate-900 cursor-pointer line-clamp-1 group-hover:underline"
+            className="font-sans font-semibold text-slate-800 dark:text-slate-100 text-sm tracking-tight mb-2 hover:text-slate-950 dark:hover:text-white cursor-pointer line-clamp-1 group-hover:underline transition-colors"
           >
             {product.name}
           </h3>
 
-          <p className="text-slate-500 text-xs font-sans mb-3 line-clamp-2 leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-sans mb-3 line-clamp-2 leading-relaxed">
             {product.shortDescription || product.description}
           </p>
         </div>
 
         <div>
           <div className="flex items-baseline gap-2">
-            <span className="text-base font-sans font-bold text-slate-900">
+            <span className="text-base font-sans font-bold text-slate-900 dark:text-indigo-400">
               ${product.price.toFixed(2)}
             </span>
             {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <span className="text-xs text-slate-400 line-through font-sans">
+              <span className="text-xs text-slate-400 dark:text-slate-500 line-through font-sans">
                 ${product.compareAtPrice.toFixed(2)}
               </span>
             )}
@@ -197,7 +197,7 @@ export function ProductCard({ product, user, onViewDetails, onQuickAdd, onToggle
                 onQuickAdd(product);
               }
             }}
-            className="w-full mt-4 inline-flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-900 hover:text-white dark:border-slate-800 text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100 disabled:hover:text-slate-400 text-xs font-sans font-medium py-2 px-3 rounded-xl transition-all active:scale-98"
+            className="w-full mt-4 inline-flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-900 hover:text-white dark:bg-slate-800/80 dark:hover:bg-indigo-600 dark:hover:text-white dark:border-slate-700/50 text-slate-800 dark:text-slate-100 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100 disabled:hover:text-slate-400 text-xs font-sans font-medium py-2 px-3 rounded-xl transition-all active:scale-98 cursor-pointer"
           >
             <ShoppingCart className="w-3.5 h-3.5" />
             <span>{outOfStock ? 'Unavailable' : product.variants && product.variants.length > 0 ? 'Select Options' : 'Add to Cart'}</span>

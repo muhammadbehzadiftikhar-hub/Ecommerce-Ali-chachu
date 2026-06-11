@@ -25,7 +25,11 @@ import {
   adminUpdateOrderStatus,
   adminUpdatePaymentStatus,
   adminGetUsers,
-  adminUpdateUserRole
+  adminUpdateUserRole,
+  adminGetAlertMessages,
+  adminSaveAlertMessages,
+  adminCreateNewAdmin,
+  adminResetOtherAdminPassword
 } from '../services/adminService';
 import { getFriendlyErrorMessage } from '../services/errorHandler';
 
@@ -57,7 +61,12 @@ export function AdminPortal({
   const [usersList, setUsersList] = useState<AppUser[]>([]);
   
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'categories' | 'orders' | 'customers'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'categories' | 'orders' | 'customers' | 'alerts' | 'admins'>('stats');
+
+  // Dynamic marquee alert settings state
+  const [alertList, setAlertList] = useState<string[]>([]);
+  const [newAlertText, setNewAlertText] = useState('');
+  const [isSavingAlerts, setIsSavingAlerts] = useState(false);
 
   // Interactive operation states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -70,6 +79,17 @@ export function AdminPortal({
   const [categorySearch, setCategorySearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
+
+  // Admin Manager state variables
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  
+  // Reset Password state variables
+  const [resettingUser, setResettingUser] = useState<AppUser | null>(null);
+  const [resetPasswordVal, setResetPasswordVal] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // Delete Confirmation state (Products & Categories)
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -139,16 +159,18 @@ export function AdminPortal({
   const loadDatabaseRecords = async (silent = false) => {
     if (!silent) setIsLoadingData(true);
     try {
-      const [prods, cats, ords, usrs] = await Promise.all([
+      const [prods, cats, ords, usrs, alerts] = await Promise.all([
         adminGetProducts(),
         adminGetCategories(),
         adminGetOrders(),
-        adminGetUsers()
+        adminGetUsers(),
+        adminGetAlertMessages()
       ]);
       setProducts(prods || []);
       setCategories(cats || []);
       setOrders(ords || []);
       setUsersList(usrs || []);
+      setAlertList(alerts || []);
     } catch (e: any) {
       console.error("Dashboard metadata lookup failed:", e);
       const friendly = getFriendlyErrorMessage(e, "Failed to load directory tables from Firestore database.");
@@ -806,6 +828,30 @@ export function AdminPortal({
             <UserIcon className={`w-4 h-4 ${activeTab === 'customers' ? 'text-slate-50' : 'text-slate-500'}`} />
             <span>User Accounts</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('admins')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+              activeTab === 'admins'
+                ? 'bg-slate-900 border-slate-900 text-slate-50 shadow-md shadow-slate-900/10'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 border-transparent'
+            }`}
+          >
+            <ShieldCheck className={`w-4 h-4 ${activeTab === 'admins' ? 'text-slate-50' : 'text-slate-500'}`} />
+            <span>Admin Accounts</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('alerts')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+              activeTab === 'alerts'
+                ? 'bg-slate-900 border-slate-900 text-slate-50 shadow-md shadow-slate-900/10'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 border-transparent'
+            }`}
+          >
+            <Sparkles className={`w-4 h-4 ${activeTab === 'alerts' ? 'text-slate-50' : 'text-slate-500'}`} />
+            <span>Alert Bar Manager</span>
+          </button>
         </nav>
 
         {/* Global actions at bottom */}
@@ -853,6 +899,8 @@ export function AdminPortal({
               {activeTab === 'categories' && "Category Resource Map"}
               {activeTab === 'orders' && "Customer Order Invoices"}
               {activeTab === 'customers' && "System User Profiles"}
+              {activeTab === 'alerts' && "Top Announcement Bar Settings"}
+              {activeTab === 'admins' && "Administrative Accounts & Access Control"}
             </h1>
           </div>
           
@@ -875,6 +923,7 @@ export function AdminPortal({
             {activeTab === 'categories' && <CategoriesSkeleton />}
             {activeTab === 'orders' && <OrdersSkeleton />}
             {activeTab === 'customers' && <CustomersSkeleton />}
+            {activeTab === 'admins' && <CustomersSkeleton />}
           </div>
         ) : (
           <div className="space-y-6">
@@ -1371,10 +1420,606 @@ export function AdminPortal({
               </div>
             )}
 
+            {/* 6. ANNOUNCEMENT MARQUEE ALERTS */}
+            {activeTab === 'alerts' && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                
+                {/* Visual Preview */}
+                <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-2 right-3 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Active Preview</span>
+                  </div>
+                  
+                  <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                    Live Scrolling Bar Simulation
+                  </h4>
+                  
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl py-2.5 overflow-hidden flex select-none mb-1">
+                    <div className="animate-marquee text-[10px] font-sans font-bold tracking-widest text-[#94a3b8] uppercase gap-16 flex items-center">
+                      {alertList.map((msg, idx) => (
+                        <span key={`prev-${idx}`} className="flex items-center gap-1.5 shrink-0">
+                          <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                          {msg}
+                        </span>
+                      ))}
+                      {/* Duplicate for marquee visual spacing */}
+                      {alertList.map((msg, idx) => (
+                        <span key={`prev-dup-${idx}`} className="flex items-center gap-1.5 shrink-0">
+                          <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                          {msg}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                    This bar synchronizes in real time with the boutique showcase interface header. Reordering, adding, or deleting alerts updates instantly.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: List and Management */}
+                  <div className="lg:col-span-7 bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-900 font-sans">Active Announcements</h3>
+                        <p className="text-[10px] text-slate-400">Manage the order and content of live scrolling posts</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm("Restore default announcements (dispatch promos, curated releases, and coupon codes)?")) {
+                            setIsSavingAlerts(true);
+                            try {
+                              const defaults = [
+                                'Complimentary Worldwide Insured Express Cargo Dispatch For Purchases Surpassing $200',
+                                'Exclusive Curated Global Releases Added Weekly — Sign up to Our Premium Newsletter List',
+                                'Enjoy Complimentary 10% Discount On First Purchase with Promo Code: MYSTORE10'
+                              ];
+                              await adminSaveAlertMessages(defaults);
+                              setAlertList(defaults);
+                              showToast("Restored original alert messages successfully", "success");
+                            } catch (err) {
+                              showToast("Failed to restore default messages/settings.", "error");
+                            } finally {
+                              setIsSavingAlerts(false);
+                            }
+                          }
+                        }}
+                        className="text-[10px] uppercase font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                      >
+                        Reset Defaults
+                      </button>
+                    </div>
+
+                    {alertList.length === 0 ? (
+                      <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-2xl">
+                        <AlertCircle className="w-8 h-8 text-slate-350 mx-auto text-slate-400 mb-2" />
+                        <p className="text-xs text-slate-400 font-semibold font-sans">No alert posts active</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Add a customized message below to update the bar.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {alertList.map((alert, index) => (
+                          <div 
+                            key={index} 
+                            className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-50/80 transition-colors group"
+                          >
+                            <div className="flex items-center gap-3 pr-4">
+                              <span className="font-mono text-[9px] bg-slate-200 text-slate-500 font-bold w-5 h-5 rounded-md flex items-center justify-center shrink-0">
+                                {index + 1}
+                              </span>
+                              <p className="text-xs font-semibold text-slate-700 leading-normal line-clamp-2">
+                                {alert}
+                              </p>
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                              {/* Reorder Up */}
+                              <button
+                                disabled={index === 0 || isSavingAlerts}
+                                onClick={async () => {
+                                  const newList = [...alertList];
+                                  const temp = newList[index];
+                                  newList[index] = newList[index - 1];
+                                  newList[index - 1] = temp;
+                                  setIsSavingAlerts(true);
+                                  try {
+                                    await adminSaveAlertMessages(newList);
+                                    setAlertList(newList);
+                                    showToast("Announcement sequence reordered.", "success");
+                                  } catch (err) {
+                                    showToast("Failed to save reordered list.", "error");
+                                  } finally {
+                                    setIsSavingAlerts(false);
+                                  }
+                                }}
+                                className="p-1 hover:bg-slate-200 rounded text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent"
+                                title="Move announcement up"
+                              >
+                                <svg className="w-3.5 h-3.5 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+
+                              {/* Reorder Down */}
+                              <button
+                                disabled={index === alertList.length - 1 || isSavingAlerts}
+                                onClick={async () => {
+                                  const newList = [...alertList];
+                                  const temp = newList[index];
+                                  newList[index] = newList[index + 1];
+                                  newList[index + 1] = temp;
+                                  setIsSavingAlerts(true);
+                                  try {
+                                    await adminSaveAlertMessages(newList);
+                                    setAlertList(newList);
+                                    showToast("Announcement sequence reordered.", "success");
+                                  } catch (err) {
+                                    showToast("Failed to save reordered list.", "error");
+                                  } finally {
+                                    setIsSavingAlerts(false);
+                                  }
+                                }}
+                                className="p-1 hover:bg-slate-200 rounded text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent"
+                                title="Move announcement down"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+
+                              {/* Delete message */}
+                              <button
+                                disabled={isSavingAlerts}
+                                onClick={async () => {
+                                  const newList = alertList.filter((_, i) => i !== index);
+                                  setIsSavingAlerts(true);
+                                  try {
+                                    await adminSaveAlertMessages(newList);
+                                    setAlertList(newList);
+                                    showToast("Announcement message has been deleted.", "success");
+                                  } catch (err) {
+                                    showToast("Could not delete message. Please retry.", "error");
+                                  } finally {
+                                    setIsSavingAlerts(false);
+                                  }
+                                }}
+                                className="p-1 hover:bg-red-50 text-red-500 rounded hover:text-red-700 cursor-pointer animate-in duration-100"
+                                title="Remove announcement"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Custom Post Alert creator */}
+                  <div className="lg:col-span-5 bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-4">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900 font-sans">Publish Custom Alert</h3>
+                      <p className="text-[10px] text-slate-400">Post a newly customized announcement immediately</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5 focus:outline-none">
+                        <label className="text-slate-400 font-extrabold uppercase tracking-wider text-[8.5px]">
+                          Message Text
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={newAlertText}
+                          onChange={(e) => setNewAlertText(e.target.value)}
+                          placeholder="E.g., 🔥 FLASH DEALS: Enter codeword MEMBERSVIP at billing checkout to disclose active discounts."
+                          className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-400"
+                        />
+                        <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                          <span>Char count recommended &lt; 120</span>
+                          <span>{newAlertText.length} characters</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={!newAlertText.trim() || isSavingAlerts}
+                        onClick={async () => {
+                          const alertTxt = newAlertText.trim();
+                          if (!alertTxt) return;
+                          setIsSavingAlerts(true);
+                          try {
+                            const newList = [...alertList, alertTxt];
+                            await adminSaveAlertMessages(newList);
+                            setAlertList(newList);
+                            setNewAlertText('');
+                            showToast("New alert bar message posted successfully!", "success");
+                          } catch (err) {
+                            showToast("Could not post alert bar message.", "error");
+                          } finally {
+                            setIsSavingAlerts(false);
+                          }
+                        }}
+                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {isSavingAlerts ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Publishing Post...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Post and Publish Alert</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Templates selector for quick random posts! */}
+                      <div className="pt-3 border-t border-slate-100">
+                        <h4 className="text-[10px] text-slate-400 uppercase font-extrabold tracking-wider mb-2.5">
+                          Quick Alert Message Promos
+                        </h4>
+                        
+                        <div className="space-y-1.5">
+                          {[
+                            "🚚 SPECIAL PROMO: Enjoy free next-day dispatch on curated vintage items this weekend only!",
+                            "💫 SPRING GALA: Up to 40% markdown implemented across standard designer categories.",
+                            "🎁 FLASH DROP: Collect dynamic limited edition accessory drops released this minute!",
+                            "🏷️ SECRET DEALS: Enter codeword MEMBERSVIP at billing checkout to disclose active discounts."
+                          ].map((tpl, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setNewAlertText(tpl)}
+                              className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 rounded-lg text-[10.5px] font-medium text-slate-600 hover:text-indigo-950 border border-transparent hover:border-indigo-100 transition-colors leading-relaxed block cursor-pointer"
+                            >
+                              {tpl}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* 7. ADMINISTRATIVE MANAGER TAB */}
+            {activeTab === 'admins' && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                
+                {/* Information Callout */}
+                <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex gap-3 text-amber-850">
+                  <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-extrabold text-amber-900 font-sans">Role Authority Warning</p>
+                    <p className="leading-relaxed text-amber-800">
+                      You are in the System Core trust boundaries. Administrators created here are registered in Firebase Authentication 
+                      and the database with immediate dashboard write access. Stored passwords are kept securely synchronized. Please use random generation where possible.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Left Column: List of Admins */}
+                  <div className="lg:col-span-8 bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/40">
+                      <div>
+                        <h3 className="font-extrabold text-sm text-slate-900 font-sans">Administrative Team Ledger</h3>
+                        <p className="text-[10px] text-slate-400">Database synchronized login credentials</p>
+                      </div>
+                      <span className="text-[10px] font-mono bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg uppercase font-bold">
+                        Count: {usersList.filter(u => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN').length}
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[550px]">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">
+                            <th className="py-4 px-5">Admin Node Name</th>
+                            <th className="py-4 px-4">Secure Email ID</th>
+                            <th className="py-4 px-4">Stored Password Key</th>
+                            <th className="py-4 px-5 text-right">Access Controls</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs">
+                          {usersList
+                            .filter(u => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN')
+                            .map((u) => {
+                              const isCurrentUser = u.email === user?.email;
+                              return (
+                                <tr key={u.id} className="hover:bg-slate-50/30 transition-colors font-medium">
+                                  {/* Identity info */}
+                                  <td className="py-3.5 px-5">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-150 text-indigo-500 overflow-hidden shrink-0 flex items-center justify-center font-extrabold text-xs">
+                                        {u.name ? u.name.charAt(0).toUpperCase() : 'A'}
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-extrabold text-slate-900">{u.name || 'System Administrator'}</p>
+                                          {isCurrentUser && (
+                                            <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase">You</span>
+                                          )}
+                                        </div>
+                                        <p className="text-[9px] text-slate-400 font-mono">UID: {u.id.substring(0, 10)}...</p>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Email */}
+                                  <td className="py-3.5 px-4 font-mono select-all text-slate-500">{u.email}</td>
+
+                                  {/* Password */}
+                                  <td className="py-3.5 px-4 font-mono text-slate-600">
+                                    {u.password ? (
+                                      <span className="bg-slate-100 border border-slate-200/85 px-2 py-1 rounded text-slate-800 text-[11px] select-all font-semibold">
+                                        {u.password}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-405 italic text-[11px]">No stored key (Google Auth)</span>
+                                    )}
+                                  </td>
+
+                                  {/* Actions */}
+                                  <td className="py-3.5 px-5 text-right font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setResettingUser(u);
+                                        const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+                                        let pass = '';
+                                        for (let i = 0; i < 10; i++) {
+                                          pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                                        }
+                                        setResetPasswordVal(pass);
+                                      }}
+                                      className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold hover:text-slate-950 rounded-xl text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+                                    >
+                                      Reset / Change
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Add Admin form */}
+                  <div className="lg:col-span-4 bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-5">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-900 font-sans">Provision New Admin</h3>
+                      <p className="text-[10px] text-slate-400">Add a new administrator to the database system</p>
+                    </div>
+
+                    <form 
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!adminName || !adminEmail || !adminPassword) {
+                          showToast("Please complete all fields to authorize admin.", "error");
+                          return;
+                        }
+                        if (adminPassword.length < 6) {
+                          showToast("Password must contain at least 6 characters.", "error");
+                          return;
+                        }
+                        setIsCreatingAdmin(true);
+                        try {
+                          await adminCreateNewAdmin(adminEmail, adminPassword, adminName);
+                          await loadDatabaseRecords(true);
+                          setAdminName('');
+                          setAdminEmail('');
+                          setAdminPassword('');
+                          showToast("New administrator successfully authorized and created in database!", "success");
+                        } catch (err: any) {
+                          showToast(err.message || "Failed to create administrator.", "error");
+                        } finally {
+                          setIsCreatingAdmin(false);
+                        }
+                      }}
+                      className="space-y-4"
+                    >
+                      {/* Name input */}
+                      <div className="space-y-1.5">
+                        <label className="text-slate-400 font-bold uppercase tracking-wider text-[8.5px]">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="E.g., Sarah Jenkins"
+                          value={adminName}
+                          onChange={(e) => setAdminName(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* Email input */}
+                      <div className="space-y-1.5">
+                        <label className="text-slate-400 font-bold uppercase tracking-wider text-[8.5px]">Secure Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="jenkins.sarah@example.com"
+                          value={adminEmail}
+                          onChange={(e) => setAdminEmail(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* Password input + Randomize */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-slate-400 font-bold uppercase tracking-wider text-[8.5px]">Initial Password</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+                              let pass = '';
+                              for (let i = 0; i < 10; i++) {
+                                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                              }
+                              setAdminPassword(pass);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-850 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                          >
+                            Generate Password
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Configure login password"
+                          value={adminPassword}
+                          onChange={(e) => setAdminPassword(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-indigo-500 transition-colors font-mono"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isCreatingAdmin}
+                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50 mt-4"
+                      >
+                        {isCreatingAdmin ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Provisioning Credentials...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Authorize Admin Account</span>
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
           </div>
         )}
 
       </main>
+
+      {/* PASSWORD RESET DIALOG MODAL */}
+      {resettingUser && (
+        <div className="fixed inset-0 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl relative border border-slate-150 animate-in zoom-in-95 duration-200 p-6 text-slate-800">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+              <div>
+                <span className="font-mono text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md uppercase font-bold">
+                  Credentials Manager
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 tracking-tight mt-1">
+                  Reset Admin Password
+                </h3>
+              </div>
+              <button 
+                onClick={() => setResettingUser(null)}
+                className="p-1.5 hover:bg-slate-100/80 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs space-y-1">
+                <p className="text-slate-500 font-bold uppercase tracking-wider text-[8px]">Managing Profile</p>
+                <p className="font-extrabold text-slate-800">{resettingUser.name || 'System Admin'}</p>
+                <p className="text-slate-500 font-mono text-[10px] sm:text-xs select-all">{resettingUser.email}</p>
+                <p className="text-[10px] text-slate-400 font-mono">UID: {resettingUser.id}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-slate-400 font-bold uppercase tracking-wider text-[8.5px]">
+                    New Secure Password Key
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+                      let pass = '';
+                      for (let i = 0; i < 10; i++) {
+                        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                      }
+                      setResetPasswordVal(pass);
+                    }}
+                    className="text-indigo-600 hover:text-indigo-850 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Regenerate Key
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Set login credential key"
+                  value={resetPasswordVal}
+                  onChange={(e) => setResetPasswordVal(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-indigo-500 transition-colors font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setResettingUser(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
+                >
+                  Discard Changes
+                </button>
+                <button
+                  type="button"
+                  disabled={isResettingPassword || !resetPasswordVal}
+                  onClick={async () => {
+                    if (!resetPasswordVal) return;
+                    setIsResettingPassword(true);
+                    try {
+                      await adminResetOtherAdminPassword(
+                        resettingUser.id, 
+                        resettingUser.email, 
+                        resettingUser.password || '', 
+                        resetPasswordVal
+                      );
+                      await loadDatabaseRecords(true);
+                      showToast(`Password successfully reset for administrator ${resettingUser.name || 'Admin'}.`, "success");
+                      setResettingUser(null);
+                      setResetPasswordVal('');
+                    } catch (err: any) {
+                      showToast(err.message || "Failed to update administrator password.", "error");
+                    } finally {
+                      setIsResettingPassword(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm transition-colors cursor-pointer"
+                >
+                  {isResettingPassword ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Key...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Reset</span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* CREATE / EDIT PRODUCT SLIDE DIALOG MODAL */}
       {isAddingProduct && (

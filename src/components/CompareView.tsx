@@ -141,7 +141,7 @@ export function CompareView({ products, onNavigateToStore, onViewProduct }: Comp
               <tr>
                 <td className="p-6 text-xs font-bold text-slate-450 uppercase dark:text-slate-400">Model SKU Code</td>
                 {comparedProducts.map((p) => (
-                  <td key={p.id} className="p-6 text-xs font-mono text-slate-800 dark:text-slate-205">{p.sku}</td>
+                  <td key={p.id} className="p-6 text-xs font-mono text-slate-800 dark:text-slate-300">{p.sku}</td>
                 ))}
               </tr>
               <tr>
@@ -171,7 +171,7 @@ export function CompareView({ products, onNavigateToStore, onViewProduct }: Comp
                   <td key={p.id} className="p-6">
                     <div className="flex flex-wrap gap-1">
                       {p.tags && p.tags.map((tag, i) => (
-                        <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-50 dark:bg-slate-850 dark:text-slate-400 px-2 py-0.5 rounded-full select-none">
+                        <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-50 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full select-none">
                           #{tag}
                         </span>
                       ))}

@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth, loginWithGoogle } from './lib/firebase';
 import { onAuthStateChanged, signOut, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { SEED_CATEGORIES, SEED_PRODUCTS } from './lib/firebase-seed';
 import { adminResetDatabase } from './services/adminService';
 import { Product, Category } from './types';
@@ -49,7 +49,13 @@ export default function App() {
   const [successOrder, setSuccessOrder] = useState<any>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [hasUnreadFeedback, setHasUnreadFeedback] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [alertMessages, setAlertMessages] = useState<string[]>([
+    'Complimentary Worldwide Insured Express Cargo Dispatch For Purchases Surpassing $200',
+    'Exclusive Curated Global Releases Added Weekly — Sign up to Our Premium Newsletter List',
+    'Enjoy Complimentary 10% Discount On First Purchase with Promo Code: MYSTORE10'
+  ]);
 
   // Dedicated Server-isolated Admin States
   const [adminProducts, setAdminProducts] = useState<Product[]>([]);
@@ -185,6 +191,56 @@ export default function App() {
       unsubscribeProducts();
     };
   }, [systemMode]);
+
+  // Listen to site feedback submissions to check for unread entries
+  useEffect(() => {
+    let unsubscribeFeedback = () => {};
+    try {
+      unsubscribeFeedback = onSnapshot(collection(db, 'feedback'), (snapshot) => {
+        const lastReadStr = localStorage.getItem('lastReadFeedbackTimestamp');
+        const lastReadTime = lastReadStr ? new Date(lastReadStr).getTime() : 0;
+        
+        let unread = false;
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.createdAt) {
+            const creationTime = new Date(data.createdAt).getTime();
+            if (creationTime > lastReadTime) {
+              unread = true;
+            }
+          }
+        });
+        setHasUnreadFeedback(unread);
+      }, (err) => {
+        console.warn("Feedback query silent error or permission rule blocker:", err);
+      });
+    } catch (e) {
+      console.warn("Feedback live subscription exception:", e);
+    }
+    return () => unsubscribeFeedback();
+  }, [isFeedbackOpen]);
+
+  // Listen to site settings configuration from Firestore
+  useEffect(() => {
+    let unsubscribeSettings = () => {};
+    try {
+      unsubscribeSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.alertBarMessages && Array.isArray(data.alertBarMessages) && data.alertBarMessages.length > 0) {
+            setAlertMessages(data.alertBarMessages);
+          } else if (data.value && data.value.alertBarMessages && Array.isArray(data.value.alertBarMessages) && data.value.alertBarMessages.length > 0) {
+            setAlertMessages(data.value.alertBarMessages);
+          }
+        }
+      }, (err) => {
+        console.warn("Settings listener warning (unseeded or rule locked):", err);
+      });
+    } catch (e) {
+      console.warn("Settings reader exception:", e);
+    }
+    return () => unsubscribeSettings();
+  }, []);
 
   // Auto-Seeder if Firestore collections are database-empty
   useEffect(() => {
@@ -359,7 +415,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-white text-slate-900 flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-10 h-10 text-slate-800 animate-spin" />
-        <h3 className="font-sans font-medium text-xs text-slate-400 uppercase tracking-widest animate-pulse">Syncing Boutique Database...</h3>
+        <h3 className="font-sans font-medium text-xs text-slate-400 uppercase tracking-widest animate-pulse">SYNCING DATABASE.....</h3>
       </div>
     );
   }
@@ -528,10 +584,24 @@ export default function App() {
         /* Isolated Customer Web Environment */
         <div className="flex-1 flex flex-col justify-between">
           <div>
-            {/* Top Shipment Promos Banner */}
-            <div className="bg-slate-50 dark:bg-slate-900/50 text-[10px] font-sans font-bold tracking-widest text-[#64748b] text-center uppercase py-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-              <span>Complimentary Worldwide Insured Express Cargo Dispatch For Purchases Surpassing $200</span>
+            {/* Top Shipment Promos Banner (Seamless Marquee Bar) */}
+            <div className="relative overflow-hidden w-full bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800/80 py-2 select-none flex">
+              <div className="animate-marquee text-[10px] font-sans font-bold tracking-widest text-[#64748b] uppercase gap-16 flex items-center">
+                {alertMessages.map((msg, idx) => (
+                  <span key={`original-${idx}`} className="flex items-center gap-1.5 shrink-0">
+                    <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                    {msg}
+                  </span>
+                ))}
+                
+                {/* Duplicate for seamless looping */}
+                {alertMessages.map((msg, idx) => (
+                  <span key={`duplicate-${idx}`} className="flex items-center gap-1.5 shrink-0">
+                    <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                    {msg}
+                  </span>
+                ))}
+              </div>
             </div>
 
             {/* Global Header */}
@@ -708,14 +778,43 @@ export default function App() {
           )}
 
           {/* Floating feedback trigger */}
-          <button
+          <motion.button
             id="floating-feedback-trigger-btn"
-            onClick={() => setIsFeedbackOpen(true)}
-            className="fixed bottom-6 right-6 z-40 bg-slate-900 border border-slate-800 text-slate-100 hover:text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all p-3.5 rounded-full flex items-center justify-center cursor-pointer"
+            onClick={() => {
+              setIsFeedbackOpen(true);
+              localStorage.setItem('lastReadFeedbackTimestamp', new Date().toISOString());
+              setHasUnreadFeedback(false);
+            }}
+            whileHover={{ 
+              scale: 1.12,
+              boxShadow: "0 0 25px rgba(99, 102, 241, 0.65)",
+              borderColor: "rgba(99, 102, 241, 0.6)"
+            }}
+            whileTap={{ scale: 0.92 }}
+            animate={hasUnreadFeedback ? {
+              scale: [1, 1.08, 1],
+              boxShadow: [
+                "0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)",
+                "0 0 22px rgba(99, 102, 241, 0.7)",
+                "0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)"
+              ]
+            } : undefined}
+            transition={hasUnreadFeedback ? {
+              duration: 2.0,
+              repeat: Infinity,
+              ease: "easeInOut"
+            } : { type: "spring", stiffness: 450, damping: 14 }}
+            className="fixed bottom-6 right-6 z-40 w-14 h-14 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] bg-slate-900 border border-slate-800 text-slate-100 hover:text-indigo-300 shadow-xl rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200"
             title="Submit Site Feedback"
           >
             <MessageSquare className="w-5 h-5" />
-          </button>
+            {hasUnreadFeedback && (
+              <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500 border border-slate-900"></span>
+              </span>
+            )}
+          </motion.button>
 
           {/* site feedback modal */}
           <FeedbackModal

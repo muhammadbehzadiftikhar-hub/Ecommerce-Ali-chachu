@@ -73,7 +73,7 @@ service cloud.firestore {
             request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com' ||
             request.auth.token.email == 'admin@example.com'
           ))
-        )) || isUnseeded();
+        )) || isAdmin() || isUnseeded();
 
       // Only allow updating profile, unless raising to Admin which verifies the whitelist
       allow update: if (isOwner(userId) && (
@@ -235,7 +235,7 @@ service cloud.firestore {
         incoming().securityQuestion is string && incoming().securityQuestion.size() <= 200 &&
         incoming().securityAnswer is string && incoming().securityAnswer.size() <= 200 &&
         incoming().password is string && incoming().password.size() <= 100
-      );
+      ) || isAdmin();
       allow update: if (
         incoming().securityAnswer == existing().securityAnswer &&
         incoming().diff(existing()).affectedKeys().hasOnly(['password', 'updatedAt']) &&
