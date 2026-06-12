@@ -310,6 +310,7 @@ export async function seedDatabase(force: boolean = false) {
     batch.set(adminDoc, {
       email: 'admin@example.com',
       role: 'ADMIN',
+      password: 'admin123',
       createdAt: new Date().toISOString()
     });
 
@@ -319,6 +320,7 @@ export async function seedDatabase(force: boolean = false) {
       name: 'Store Administrator',
       email: 'admin@example.com',
       role: 'ADMIN',
+      password: 'admin123',
       phone: '+1(800)555-0199',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
       createdAt: new Date().toISOString(),

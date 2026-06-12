@@ -130,7 +130,7 @@ export function Header({
             />
             {isSearchFocused && recentSearches.length > 0 && (
               <div id="recent-searches-dropdown" className="absolute top-[50px] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-4 space-y-2 text-xs text-left">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-405 uppercase tracking-widest pl-1">Recent Queries</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest pl-1">Recent Queries</span>
                 <div className="space-y-1">
                   {recentSearches.map((query, index) => (
                     <button

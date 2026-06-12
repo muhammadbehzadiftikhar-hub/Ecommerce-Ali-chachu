@@ -24,8 +24,9 @@ service cloud.firestore {
     // Admin validation - matches developer email, seed admin, or explicit database collections
     function isAdmin() {
       return isSignedIn() && (
-        ('email' in request.auth.token && request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com') ||
-        ('email' in request.auth.token && request.auth.token.email == 'admin@example.com') ||
+        ('email' in request.auth.token && request.auth.token.email.lower() == 'muhammadbehzadiftikhar@gmail.com') ||
+        ('email' in request.auth.token && request.auth.token.email.lower() == 'muhammadbehzad@gmail.com') ||
+        ('email' in request.auth.token && request.auth.token.email.lower() == 'admin@example.com') ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN')
@@ -68,10 +69,12 @@ service cloud.firestore {
         (
           incoming().role == 'CUSTOMER' ||
           (incoming().role == 'ADMIN' && (
-            incoming().email == 'muhammadbehzadiftikhar@gmail.com' ||
-            incoming().email == 'admin@example.com' ||
-            request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com' ||
-            request.auth.token.email == 'admin@example.com'
+            incoming().email.lower() == 'muhammadbehzadiftikhar@gmail.com' ||
+            incoming().email.lower() == 'muhammadbehzad@gmail.com' ||
+            incoming().email.lower() == 'admin@example.com' ||
+            request.auth.token.email.lower() == 'muhammadbehzadiftikhar@gmail.com' ||
+            request.auth.token.email.lower() == 'muhammadbehzad@gmail.com' ||
+            request.auth.token.email.lower() == 'admin@example.com'
           ))
         )) || isAdmin() || isUnseeded();
 
@@ -79,10 +82,12 @@ service cloud.firestore {
       allow update: if (isOwner(userId) && (
         (incoming().role == existing().role) ||
         (incoming().role == 'ADMIN' && (
-          incoming().email == 'muhammadbehzadiftikhar@gmail.com' ||
-          incoming().email == 'admin@example.com' ||
-          request.auth.token.email == 'muhammadbehzadiftikhar@gmail.com' ||
-          request.auth.token.email == 'admin@example.com'
+          incoming().email.lower() == 'muhammadbehzadiftikhar@gmail.com' ||
+          incoming().email.lower() == 'muhammadbehzad@gmail.com' ||
+          incoming().email.lower() == 'admin@example.com' ||
+          request.auth.token.email.lower() == 'muhammadbehzadiftikhar@gmail.com' ||
+          request.auth.token.email.lower() == 'muhammadbehzad@gmail.com' ||
+          request.auth.token.email.lower() == 'admin@example.com'
         ))
       )) || isAdmin();
 

@@ -122,21 +122,49 @@ export default function App() {
         // Fetch user document from users collection to verify roles strictly
         let isUserAdmin = await verifyUserIsAdmin(currentUser.uid);
 
-        // Automatic developer/seed onboarding to secure Admin role
-        if (!isUserAdmin && currentUser.email && (currentUser.email === 'muhammadbehzadiftikhar@gmail.com' || currentUser.email === 'admin@example.com')) {
+        // Automatic developer/seed onboarding to secure Admin role & ensure password field exists
+        const lowerEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
+        const isDeveloperAccount = lowerEmail === 'muhammadbehzadiftikhar@gmail.com' || 
+                                   lowerEmail === 'muhammadbehzad@gmail.com' || 
+                                   lowerEmail === 'admin@example.com';
+
+        if (currentUser.uid) {
           try {
-            const { setDoc, doc } = await import('firebase/firestore');
-            await setDoc(doc(db, 'users', currentUser.uid), {
-              id: currentUser.uid,
-              name: currentUser.displayName || 'Store Administrator',
-              email: currentUser.email,
-              role: 'ADMIN',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            });
-            isUserAdmin = true;
+            const { getDoc, setDoc, updateDoc, doc } = await import('firebase/firestore');
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data();
+              const hasAdminRole = userData?.role === 'ADMIN' || userData?.role === 'SUPER_ADMIN' || isDeveloperAccount;
+              if (hasAdminRole && !userData.password) {
+                // Self-heal: Database document exists but lacks 'password' field. Backfill it!
+                await updateDoc(userDocRef, {
+                  password: 'admin123',
+                  role: 'ADMIN',
+                  updatedAt: new Date().toISOString()
+                });
+                console.log("Self-healing: Synchronized and added missing password field for administrator.");
+              }
+              if (hasAdminRole) {
+                isUserAdmin = true;
+              }
+            } else if (isDeveloperAccount) {
+              // Create the document with a default password field if it doesn't exist yet
+              await setDoc(userDocRef, {
+                id: currentUser.uid,
+                name: currentUser.displayName || 'Store Administrator',
+                email: currentUser.email,
+                role: 'ADMIN',
+                password: 'admin123',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              });
+              isUserAdmin = true;
+              console.log("Self-healing: Provisioned developer profile with admin role & password field.");
+            }
           } catch (e) {
-            console.error("Auto-provisioning admin role failed:", e);
+            console.error("Self-healing check failed:", e);
           }
         }
         setIsAdmin(isUserAdmin);

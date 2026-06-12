@@ -31,6 +31,7 @@ import {
 import { loginWithGoogle } from '../lib/firebase';
 import { useToast } from '../hooks/useToast';
 import { ForgotPassword } from './ForgotPassword';
+import { getFriendlyErrorMessage } from '../services/errorHandler';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       handleClose();
     } catch (err: any) {
       console.error(err);
-      showToast(err.message || 'Incorrect email or password credential. Please review and retry.', 'error');
+      showToast(getFriendlyErrorMessage(err, 'Incorrect email or password credential. Please review and retry.'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +132,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       handleClose();
     } catch (err: any) {
       console.error(err);
-      showToast(err.message || 'Setup unsuccessful. This email address might belong to an active profile.', 'error');
+      showToast(getFriendlyErrorMessage(err, 'Setup unsuccessful. This email address might belong to an active profile.'), 'error');
     } finally {
       setIsLoading(false);
     }

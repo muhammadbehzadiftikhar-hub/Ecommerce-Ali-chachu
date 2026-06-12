@@ -64,17 +64,65 @@ export function getFriendlyErrorMessage(error: any, defaultMessage = "An unexpec
   if (!error) return defaultMessage;
   
   const rawMessage = error instanceof Error ? error.message : String(error);
+  let parsed: any = null;
   try {
-    const parsed = JSON.parse(rawMessage);
-    if (parsed && typeof parsed === 'object' && ('message' in parsed || 'error' in parsed)) {
-      return parsed.message || parsed.error || defaultMessage;
-    }
+    parsed = JSON.parse(rawMessage);
   } catch {
-    // Treat as raw message
+    if (typeof error === 'object' && error !== null) {
+      parsed = error;
+    }
   }
-  
-  if (rawMessage.includes("Permission denied") || rawMessage.includes("insufficient permissions")) {
-    return "Access Denied: Restricted directory action.";
+
+  const errorCode = parsed?.code || error?.code;
+  const originalErr = parsed?.originalError || parsed?.error || rawMessage;
+
+  if (errorCode) {
+    switch (errorCode) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return "Incorrect email or password. Please check your credentials and try again.";
+      case 'auth/email-already-in-use':
+        return "An account with this email address already exists.";
+      case 'auth/weak-password':
+        return "Password is too weak. Please use at least 6 characters.";
+      case 'auth/invalid-email':
+        return "Please input a valid email address.";
+      case 'auth/user-disabled':
+        return "This user account has been deactivated.";
+      case 'auth/too-many-requests':
+        return "Access temporarily blocked due to multiple failed sign-in attempts. Please try again later.";
+      case 'PERMISSION_DENIED':
+      case 'permission-denied':
+        return "Access Denied: You do not possess the required administrative permissions.";
+    }
+  }
+
+  // Fallback pattern matching
+  const checkStr = (parsed?.message || originalErr || rawMessage).toLowerCase();
+  if (checkStr.includes("invalid-credential") || checkStr.includes("auth/invalid-credential") || checkStr.includes("wrong-password") || checkStr.includes("invalid credential")) {
+    return "Incorrect email or password. Please check your credentials and try again.";
+  }
+  if (checkStr.includes("email-already-in-use") || checkStr.includes("email already in use")) {
+    return "An account with this email address already exists.";
+  }
+  if (checkStr.includes("permission") || checkStr.includes("unauthorized") || checkStr.includes("insufficient")) {
+    return "Access Denied: You do not possess the required permissions for this operation.";
+  }
+
+  if (parsed && typeof parsed === 'object' && ('message' in parsed || 'error' in parsed)) {
+    let msg = parsed.message || parsed.error || defaultMessage;
+    // Clean up technical database prefixes
+    if (msg.includes("Reason: ")) {
+      msg = msg.split("Reason: ").pop() || msg;
+    }
+    if (msg.includes("Firebase: ")) {
+      msg = msg.replace(/Firebase:\s*(Error\s*)?(\((.*?)\))?\.?/g, '').trim();
+    }
+    if (msg.startsWith("Error (") && msg.endsWith(").")) {
+      msg = msg.substring(7, msg.length - 2);
+    }
+    return msg || defaultMessage;
   }
   
   return rawMessage || defaultMessage;
